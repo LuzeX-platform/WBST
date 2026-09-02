@@ -20,3 +20,17 @@ byte-identiek.
 
 `support.js` en `image-slot.js` worden niet door `index.html` geladen — het
 zijn restanten van het build-gereedschap.
+
+## Uitleveren
+
+De site draait op Render, dat bouwt vanaf `main`. Eén bestand wordt uitgeleverd:
+`index.html`.
+
+`.github/workflows/deploy.yml` zet bij elke push naar `main` een deploy in gang
+en logt dat in het tabblad Actions, zodat te zien is óf en wanneer er
+gedeployd is. Dat vereist eenmalig een repository-secret `RENDER_DEPLOY_HOOK`
+met de deploy-hook-URL uit het Render-dashboard (Settings → Deploy Hook); de
+instructies staan boven in dat workflow-bestand.
+
+Zonder dat secret faalt de workflow met een duidelijke melding — Render's eigen
+automatische deploy blijft dan gewoon werken, je mist alleen het logboek.
