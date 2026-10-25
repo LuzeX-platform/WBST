@@ -23,6 +23,6 @@
   ],
   "theme_color": "#1d1d1f",
   "background_color": "#cfc6bc",
-  "display": "standalone",
+  "display": "browser",
   "start_url": "/"
 }
