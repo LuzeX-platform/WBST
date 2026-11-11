@@ -40,7 +40,7 @@ BASIS = "https://luzex.nl"
 TITEL = "LuzeX — software op maat. Minder. Maar beter."
 OMSCHRIJVING = (
     "L u z e X bouwt gerichte software op maat voor werk dat niemand ooit heeft "
-    "ontworpen. ACCRD en CMMNTY draaien, RSLNT is onderweg."
+    "ontworpen. ACCRD, CMMNTY en RSLNT draaien."
 )
 # Liggend 1200x630, gemaakt door tools/og.py. Een vierkant logo werd door
 # WhatsApp en LinkedIn bijgesneden of klein getoond.
