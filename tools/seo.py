@@ -42,7 +42,11 @@ OMSCHRIJVING = (
     "L u z e X bouwt gerichte software op maat voor werk dat niemand ooit heeft "
     "ontworpen. ACCRD en CMMNTY draaien, RSLNT is onderweg."
 )
-DEEL_BEELD = f"{BASIS}/icon-512.png"
+# Liggend 1200x630, gemaakt door tools/og.py. Een vierkant logo werd door
+# WhatsApp en LinkedIn bijgesneden of klein getoond.
+DEEL_BEELD = f"{BASIS}/og-image.png"
+DEEL_BEELD_ALT = "Het woordmerk L U Z E X met de slogan Minder. Maar beter."
+LOGO = f"{BASIS}/icon-512.png"
 
 KOP_START = "<!-- seo:kop:start -->"
 KOP_EIND = "<!-- seo:kop:eind -->"
@@ -108,7 +112,7 @@ def _kop_blok():
         "@type": "Organization",
         "name": "LuzeX",
         "url": BASIS + "/",
-        "logo": DEEL_BEELD,
+        "logo": LOGO,
         "slogan": "Minder. Maar beter.",
         "description": OMSCHRIJVING,
     }
@@ -126,10 +130,14 @@ def _kop_blok():
         f'  <meta property="og:description" content="{e(OMSCHRIJVING)}">',
         f'  <meta property="og:url" content="{BASIS}/">',
         f'  <meta property="og:image" content="{DEEL_BEELD}">',
+        '  <meta property="og:image:width" content="1200">',
+        '  <meta property="og:image:height" content="630">',
+        f'  <meta property="og:image:alt" content="{e(DEEL_BEELD_ALT)}">',
         '  <meta name="twitter:card" content="summary_large_image">',
         f'  <meta name="twitter:title" content="{e(TITEL)}">',
         f'  <meta name="twitter:description" content="{e(OMSCHRIJVING)}">',
         f'  <meta name="twitter:image" content="{DEEL_BEELD}">',
+        f'  <meta name="twitter:image:alt" content="{e(DEEL_BEELD_ALT)}">',
         '  <script type="application/ld+json">'
         + json.dumps(gegevens, ensure_ascii=False).replace("</", "<\\/")
         + "</script>",
