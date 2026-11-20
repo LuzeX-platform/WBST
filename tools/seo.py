@@ -67,7 +67,7 @@ def _render():
         pg.goto(INDEX.as_uri())
         pg.wait_for_selector("h1", timeout=15000)
         pg.wait_for_timeout(1200)
-        blokken = pg.evaluate(
+        gevonden = pg.evaluate(
             """() => {
               const uit = [];
               const zie = (n) => {
@@ -76,26 +76,39 @@ def _render():
                 // tekst die alleen voor schermlezers bedoeld is telt niet mee
                 return !(n.clientWidth <= 1 && n.clientHeight <= 1);
               };
+              // De navigatie apart: die hoort bovenaan te staan, niet verspreid
+              // door de tekst. Zonder dit had de platte versie 0 navigatielinks.
+              const nav = [];
+              for (const a of document.querySelectorAll('nav a[href^="#"]')) {
+                const t = (a.innerText || '').replace(/\s+/g, ' ').trim();
+                const h = a.getAttribute('href');
+                if (t && zie(a) && !nav.some((x) => x.href === h)) nav.push({ tekst: t, href: h });
+              }
               for (const n of document.querySelectorAll('h1,h2,h3,p,li,a[href]')) {
                 if (!zie(n)) continue;
-                const t = (n.innerText || '').replace(/\\s+/g, ' ').trim();
+                const st = getComputedStyle(n);
+                const bron = st.textTransform === 'uppercase' ? n.textContent : n.innerText;
+                const t = (bron || '').replace(/\s+/g, ' ').trim();
                 if (!t) continue;
                 const tag = n.tagName.toLowerCase();
                 if (tag === 'a') {
                   const h = n.getAttribute('href') || '';
-                  if (!/^https?:/.test(h)) continue;   // ankers voegen niets toe
+                  // Ankers staan al in de navigatie hierboven.
+                  if (!/^(https?:|mailto:|tel:)/.test(h)) continue;
+                  if (n.closest('nav')) continue;
                   uit.push({ tag: 'a', tekst: t, href: h });
                 } else {
-                  // een <p> of <li> die zelf al een kop bevat zou dubbelen
+                  // een <p> of <li> die zelf al een kop of een link bevat zou dubbelen
                   if (n.querySelector('h1,h2,h3')) continue;
+                  if (n.querySelector('a[href^="http"],a[href^="mailto"],a[href^="tel"]')) continue;
                   uit.push({ tag, tekst: t });
                 }
               }
-              return uit;
+              return { nav: nav, blokken: uit };
             }"""
         )
         b.close()
-    return blokken
+    return gevonden
 
 
 def _ontdubbel(blokken):
@@ -148,8 +161,16 @@ def _kop_blok():
     ])
 
 
-def _romp_blok(blokken):
+def _romp_blok(gevonden):
+    """De pagina in platte HTML, in dezelfde volgorde als het scherm.
+
+    Dit was eerst een stapel losse regels met alle links opgeveegd onderaan.
+    Een audit van de ruwe HTML zag daardoor: geen navigatie, geen knoppen,
+    "LIEVER DIRECT" als zwevende regel en elke productnaam twee keer. Nu staat
+    de navigatie bovenaan, staat elke link waar hij hoort, en komt niets dubbel.
+    """
     e = html.escape
+    nav, blokken = gevonden["nav"], gevonden["blokken"]
     regels = [
         ROMP_START,
         "  <!-- De pagina in platte HTML, voor wie geen JavaScript draait: zoekmachines,",
@@ -164,27 +185,32 @@ def _romp_blok(blokken):
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;"
         'color:#1d1d1f;line-height:1.6">',
     ]
-    links = []
+
+    if nav:
+        regels.append('    <nav aria-label="Secties van deze pagina" style="margin-bottom:2rem">')
+        regels.append("      " + " &middot; ".join(
+            f'<a href="{e(b["href"])}">{e(b["tekst"])}</a>' for b in nav))
+        regels.append("    </nav>")
+
+    gezien = set()
     for b in blokken:
         t = e(b["tekst"])
         if b["tag"] == "a":
-            links.append(b)
+            # Elke link één keer. De knop en de voetlink wijzen naar hetzelfde
+            # adres; twee keer "ACCRD" onder elkaar leest als een fout.
+            if b["href"] in gezien:
+                continue
+            gezien.add(b["href"])
+            regels.append(f'    <p><a href="{e(b["href"])}">{t}</a></p>')
         elif b["tag"] == "h1":
             regels.append(f'    <h1 style="font-size:2rem;line-height:1.15">{t}</h1>')
         elif b["tag"] == "h2":
             regels.append(f'    <h2 style="font-size:1.5rem;line-height:1.2;margin-top:2rem">{t}</h2>')
         elif b["tag"] == "h3":
             regels.append(f'    <h3 style="font-size:1.2rem;margin-top:1.5rem">{t}</h3>')
-        elif b["tag"] == "li":
-            regels.append(f"    <p>{t}</p>")
         else:
             regels.append(f"    <p>{t}</p>")
-    if links:
-        regels.append('    <h2 style="font-size:1.5rem;margin-top:2rem">Onze producten</h2>')
-        regels.append('    <ul>')
-        for b in links:
-            regels.append(f'      <li><a href="{e(b["href"])}">{e(b["tekst"])}</a></li>')
-        regels.append('    </ul>')
+
     regels += ["  </div>", ROMP_EIND]
     return "\n".join(regels)
 
@@ -220,7 +246,8 @@ def main():
     # bevat na stap 1 dezelfde markers, maar dan als tekst binnen een JSON-string;
     # zou de vervanging ook daar toeslaan, dan schrijft hij dwars door die string
     # heen en is de bundel stuk. Dat is één keer gebeurd.
-    blokken = _ontdubbel(_render())
+    gevonden = _render()
+    gevonden["blokken"] = _ontdubbel(gevonden["blokken"])
     alle = INDEX.read_text(encoding="utf-8").split("\n")
     grens = next(n for n, r in enumerate(alle)
                  if r.strip() == '<script type="__bundler/template">')
@@ -229,7 +256,7 @@ def main():
     index = index.replace("<title>LuzeX</title>", f"<title>{html.escape(TITEL)}</title>", 1)
     index = _vervang(index, KOP_START, KOP_EIND, _kop_blok(),
                      f"<title>{html.escape(TITEL)}</title>")
-    index = _vervang(index, ROMP_START, ROMP_EIND, _romp_blok(blokken), "<body>")
+    index = _vervang(index, ROMP_START, ROMP_EIND, _romp_blok(gevonden), "<body>")
     # De bundel meldde zonder JavaScript "This page requires JavaScript to
     # display." Dat was waar toen er niets stond, maar nu staat de hele pagina
     # er; de melding zou bezoekers en crawlers tegenspreken.
@@ -254,9 +281,9 @@ def main():
         f"  <url>\n    <loc>{BASIS}/</loc>\n    <changefreq>monthly</changefreq>\n"
         "    <priority>1.0</priority>\n  </url>\n</urlset>\n", encoding="utf-8")
 
-    koppen = sum(1 for b in blokken if b["tag"].startswith("h"))
-    print(f"{len(blokken)} blokken ({koppen} koppen, "
-          f"{sum(1 for b in blokken if b['tag'] == 'a')} links) in de platte versie")
+    koppen = sum(1 for b in gevonden["blokken"] if b["tag"].startswith("h"))
+    print(f"{len(gevonden['blokken'])} blokken ({koppen} koppen, "
+          f"{len(gevonden['nav'])} navigatielinks) in de platte versie")
 
 
 if __name__ == "__main__":
