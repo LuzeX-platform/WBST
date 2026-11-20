@@ -38,8 +38,11 @@ SITE = WORTEL / "site.html"
 
 BASIS = "https://luzex.nl"
 TITEL = "LuzeX — software op maat. Minder. Maar beter."
+# Let op: hier staat "LuzeX" als één woord. Op de pagina zelf doet .merk de
+# spatiëring met letter-spacing, maar in een meta-tag is er geen CSS: daar werd
+# "L u z e X" letterlijk zo getoond in zoekresultaten en linkvoorbeelden.
 OMSCHRIJVING = (
-    "L u z e X bouwt gerichte software op maat voor werk dat niemand ooit heeft "
+    "LuzeX bouwt gerichte software op maat voor werk dat niemand ooit heeft "
     "ontworpen. ACCRD, CMMNTY en RSLNT draaien."
 )
 # Liggend 1200x630, gemaakt door tools/og.py. Een vierkant logo werd door
